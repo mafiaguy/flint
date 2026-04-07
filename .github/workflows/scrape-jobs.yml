@@ -3,7 +3,6 @@ name: 🔥 FLINT Job Scraper
 on:
   schedule:
     # Runs every 8 hours (3x per day)
-    # Minute 15 to avoid the hourly rush
     - cron: '15 */8 * * *'
   
   # Manual trigger from Actions tab
@@ -23,16 +22,14 @@ jobs:
       - name: 📥 Checkout repo
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js 20
+      - name: 🟢 Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: scraper/package-lock.json
+          node-version: '22'
 
       - name: 📦 Install dependencies
         working-directory: ./scraper
-        run: npm ci || npm install
+        run: npm install
 
       - name: 🎭 Install Playwright Chromium
         working-directory: ./scraper
@@ -51,3 +48,7 @@ jobs:
       - name: 📊 Summary
         if: always()
         run: echo "Scrape completed at $(date -u)"
+
+    # Opt into Node.js 24 to silence deprecation warning
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
