@@ -47,9 +47,16 @@ const TECH_REGEX =
 // VERIFIED GREENHOUSE BOARDS (removed all 404s, added new)
 // Test any slug: https://boards-api.greenhouse.io/v1/boards/{slug}/jobs
 // ═══════════════════════════════════════════════════════════
-// Only boards confirmed working (removed all 404s from previous run)
+// ═══════════════════════════════════════════════════════════
+// COMPREHENSIVE BOARD LISTS
+// The scraper gracefully skips 404s, so we can list every
+// possible slug. First run acts as discovery — check logs
+// to see which boards are alive.
+// To verify: curl https://boards-api.greenhouse.io/v1/boards/SLUG/jobs
+// ═══════════════════════════════════════════════════════════
+
 const GREENHOUSE = [
-  // ── Confirmed working ──
+  // ── Confirmed working (from previous runs) ──
   { slug: "cloudflare", name: "Cloudflare" },
   { slug: "datadog", name: "Datadog" },
   { slug: "gitlab", name: "GitLab" },
@@ -64,11 +71,109 @@ const GREENHOUSE = [
   { slug: "newrelic", name: "New Relic" },
   { slug: "yugabyte", name: "YugabyteDB" },
   { slug: "groww", name: "Groww" },
-  // ── Moved from Lever (confirmed on Greenhouse now) ──
   { slug: "vercel", name: "Vercel" },
   { slug: "anthropic", name: "Anthropic" },
-  // ── Add more verified slugs below ──
-  // To test: curl https://boards-api.greenhouse.io/v1/boards/SLUG/jobs
+  // ── Global top 100 tech (slug = lowercase company name) ──
+  { slug: "stripe", name: "Stripe" },
+  { slug: "figma", name: "Figma" },
+  { slug: "airbnb", name: "Airbnb" },
+  { slug: "discord", name: "Discord" },
+  { slug: "spotify", name: "Spotify" },
+  { slug: "pinterest", name: "Pinterest" },
+  { slug: "robinhood", name: "Robinhood" },
+  { slug: "lyft", name: "Lyft" },
+  { slug: "coinbase", name: "Coinbase" },
+  { slug: "brex", name: "Brex" },
+  { slug: "gusto", name: "Gusto" },
+  { slug: "lattice", name: "Lattice" },
+  { slug: "twilio", name: "Twilio" },
+  { slug: "webflow", name: "Webflow" },
+  { slug: "hubspot", name: "HubSpot" },
+  { slug: "databricks", name: "Databricks" },
+  { slug: "doordash", name: "DoorDash" },
+  { slug: "instacart", name: "Instacart" },
+  { slug: "plaid", name: "Plaid" },
+  { slug: "airtable", name: "Airtable" },
+  { slug: "retool", name: "Retool" },
+  { slug: "vanta", name: "Vanta" },
+  { slug: "benchling", name: "Benchling" },
+  { slug: "rippling", name: "Rippling" },
+  { slug: "scale", name: "Scale AI" },
+  { slug: "anduril", name: "Anduril" },
+  { slug: "palantir", name: "Palantir" },
+  { slug: "snap", name: "Snap" },
+  { slug: "uber", name: "Uber" },
+  { slug: "okta", name: "Okta" },
+  { slug: "atlassian", name: "Atlassian" },
+  { slug: "canva", name: "Canva" },
+  { slug: "duolingo", name: "Duolingo" },
+  { slug: "squarespace", name: "Squarespace" },
+  { slug: "dropbox", name: "Dropbox" },
+  { slug: "asana", name: "Asana" },
+  { slug: "blockdaemon", name: "Blockdaemon" },
+  { slug: "snyk", name: "Snyk" },
+  { slug: "hashicorp", name: "HashiCorp" },
+  { slug: "sentry", name: "Sentry" },
+  { slug: "circleci", name: "CircleCI" },
+  { slug: "dbt", name: "dbt Labs" },
+  { slug: "confluent", name: "Confluent" },
+  { slug: "redpandadata", name: "Redpanda" },
+  { slug: "navan", name: "Navan" },
+  { slug: "deel", name: "Deel" },
+  { slug: "remotecom", name: "Remote.com" },
+  { slug: "miro", name: "Miro" },
+  { slug: "clickup", name: "ClickUp" },
+  { slug: "monday", name: "monday.com" },
+  { slug: "zapier", name: "Zapier" },
+  { slug: "gitlab", name: "GitLab" },
+  { slug: "github", name: "GitHub" },
+  { slug: "sourcegraph", name: "Sourcegraph" },
+  { slug: "vercel", name: "Vercel" },
+  { slug: "render", name: "Render" },
+  { slug: "fly", name: "Fly.io" },
+  { slug: "railway", name: "Railway" },
+  { slug: "coreweave", name: "CoreWeave" },
+  { slug: "together", name: "Together AI" },
+  { slug: "mistral", name: "Mistral AI" },
+  { slug: "cohere", name: "Cohere" },
+  { slug: "huggingface", name: "Hugging Face" },
+  { slug: "langchain", name: "LangChain" },
+  { slug: "weaviate", name: "Weaviate" },
+  { slug: "pinecone", name: "Pinecone" },
+  { slug: "qdrant", name: "Qdrant" },
+  // ── Indian tech companies ──
+  { slug: "razorpay", name: "Razorpay" },
+  { slug: "cred", name: "CRED" },
+  { slug: "meesho", name: "Meesho" },
+  { slug: "swiggy", name: "Swiggy" },
+  { slug: "zomato", name: "Zomato" },
+  { slug: "dream11", name: "Dream11" },
+  { slug: "phonepe", name: "PhonePe" },
+  { slug: "flipkart", name: "Flipkart" },
+  { slug: "ola", name: "Ola" },
+  { slug: "oyo", name: "OYO" },
+  { slug: "byju", name: "BYJU'S" },
+  { slug: "freshworks", name: "Freshworks" },
+  { slug: "browserstack", name: "BrowserStack" },
+  { slug: "inmobi", name: "InMobi" },
+  { slug: "chargebee", name: "Chargebee" },
+  { slug: "cleartax", name: "ClearTax" },
+  { slug: "unacademy", name: "Unacademy" },
+  { slug: "paytm", name: "Paytm" },
+  { slug: "nykaa", name: "Nykaa" },
+  { slug: "policybazaar", name: "PolicyBazaar" },
+  { slug: "zerodha", name: "Zerodha" },
+  { slug: "urbancompany", name: "Urban Company" },
+  { slug: "sharechat", name: "ShareChat" },
+  { slug: "jupiterapp", name: "Jupiter" },
+  { slug: "lenskart", name: "Lenskart" },
+  { slug: "slice", name: "Slice" },
+  { slug: "leadsquared", name: "LeadSquared" },
+  { slug: "druva", name: "Druva" },
+  { slug: "thoughtspot", name: "ThoughtSpot" },
+  { slug: "hasura", name: "Hasura" },
+  { slug: "atlan", name: "Atlan" },
+  { slug: "gojek", name: "GoJek" },
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -85,19 +190,40 @@ const LEVER = [
 // VERIFIED ASHBY BOARDS
 // Test: https://api.ashbyhq.com/posting-api/job-board/{slug}
 // ═══════════════════════════════════════════════════════════
-// Confirmed working + fixed slugs
+// Confirmed working + expanded
+// Verify: curl https://api.ashbyhq.com/posting-api/job-board/SLUG
 const ASHBY = [
-  // ── Confirmed working from last run ──
+  // ── Confirmed working ──
   { slug: "notion", name: "Notion" },
   { slug: "ramp", name: "Ramp" },
   { slug: "linear", name: "Linear" },
   { slug: "openai", name: "OpenAI" },
   { slug: "resend", name: "Resend" },
-  // ── Moved from Lever (confirmed on Ashby) ──
   { slug: "supabase", name: "Supabase" },
-  // ── Fixed slugs ──
   { slug: "perplexity", name: "Perplexity" },
-  // To test: curl https://api.ashbyhq.com/posting-api/job-board/SLUG
+  // ── Expanded (Ashby is popular with startups) ──
+  { slug: "cursor", name: "Cursor" },
+  { slug: "loom", name: "Loom" },
+  { slug: "clerk", name: "Clerk" },
+  { slug: "neon", name: "Neon" },
+  { slug: "cal", name: "Cal.com" },
+  { slug: "posthog", name: "PostHog" },
+  { slug: "drata", name: "Drata" },
+  { slug: "axiom", name: "Axiom" },
+  { slug: "inngest", name: "Inngest" },
+  { slug: "mintlify", name: "Mintlify" },
+  { slug: "convex", name: "Convex" },
+  { slug: "temporal", name: "Temporal" },
+  { slug: "turso", name: "Turso" },
+  { slug: "vercel", name: "Vercel" },
+  { slug: "fly", name: "Fly.io" },
+  { slug: "render", name: "Render" },
+  { slug: "netlify", name: "Netlify" },
+  { slug: "planetscale", name: "PlanetScale" },
+  { slug: "prisma", name: "Prisma" },
+  { slug: "stytch", name: "Stytch" },
+  { slug: "sanity", name: "Sanity" },
+  { slug: "grafbase", name: "Grafbase" },
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -188,14 +314,14 @@ async function scrapeGreenhouse() {
         const loc = j.location?.name || "Unknown";
         count++;
 
-        // Full description from content field
         const fullDesc = strip(j.content || "");
 
-        // Fetch application questions for this job
+        // Only fetch questions for first 10 jobs per board (rate limit courtesy)
         let questions = [];
-        try {
-          const qr = await fetch(`https://boards-api.greenhouse.io/v1/boards/${board.slug}/jobs/${j.id}?questions=true`);
-          if (qr.ok) {
+        if (count <= 10) {
+          try {
+            const qr = await fetch(`https://boards-api.greenhouse.io/v1/boards/${board.slug}/jobs/${j.id}?questions=true`);
+            if (qr.ok) {
             const qd = await qr.json();
             questions = (qd.questions || []).map(q => ({
               label: q.label,
@@ -205,6 +331,7 @@ async function scrapeGreenhouse() {
             }));
           }
         } catch {}
+        }
 
         all.push({
           id: `gh-${j.id}`,
@@ -362,6 +489,154 @@ async function scrapeAdzuna() {
   }
   return all;
 }
+
+// ═══════════════════════════════════════════════════════════
+// CUSTOM CAREER PAGES (Playwright + Groq LLM parsing)
+// For companies that don't use Greenhouse/Ashby/Lever
+// Playwright loads the page → LLM extracts structured jobs
+// ═══════════════════════════════════════════════════════════
+const CUSTOM_CAREER_PAGES = [
+  // ── Indian tech ──
+  { url: "https://www.flipkartcareers.com/#!/joblist", name: "Flipkart", country: "in" },
+  { url: "https://zerodha.com/careers", name: "Zerodha", country: "in" },
+  { url: "https://paytmcareers.com/jobs", name: "Paytm", country: "in" },
+  { url: "https://www.phonepe.com/careers/engineering/", name: "PhonePe", country: "in" },
+  { url: "https://careers.cred.club/openings", name: "CRED", country: "in" },
+  { url: "https://www.urbancompany.com/careers", name: "Urban Company", country: "in" },
+  { url: "https://www.dream11.com/careers", name: "Dream11", country: "in" },
+  { url: "https://careers.nykaa.com/", name: "Nykaa", country: "in" },
+  { url: "https://www.sliceit.com/careers", name: "Slice", country: "in" },
+  { url: "https://www.lenskart.com/careers", name: "Lenskart", country: "in" },
+  { url: "https://careers.razorpay.com/jobs", name: "Razorpay", country: "in" },
+  // ── Global tech with custom career pages ──
+  { url: "https://jobs.netflix.com/search", name: "Netflix", country: "us" },
+  { url: "https://www.metacareers.com/jobs", name: "Meta", country: "us" },
+  { url: "https://jobs.apple.com/en-us/search?sort=newest", name: "Apple", country: "us" },
+];
+
+async function scrapeCustomPages(browser) {
+  if (!process.env.SUPABASE_URL) {
+    console.log("\n⏭  [Custom Pages] Need SUPABASE_URL for Groq proxy");
+    return [];
+  }
+
+  console.log("\n🌐 [Custom Pages] Scraping", CUSTOM_CAREER_PAGES.length, "career sites with AI parsing...");
+  const all = [];
+  const GROQ_KEY = process.env.GROQ_API_KEY || "";
+
+  for (const site of CUSTOM_CAREER_PAGES) {
+    try {
+      const page = await browser.newPage({
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36",
+      });
+
+      await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 20000 });
+      await sleep(3000);
+
+      // Scroll to load dynamic content
+      for (let i = 0; i < 3; i++) {
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await sleep(1500);
+      }
+
+      // Extract all visible text + links from the page
+      const pageData = await page.evaluate(() => {
+        // Get all links that look like job listings
+        const links = Array.from(document.querySelectorAll("a")).map(a => ({
+          text: a.textContent?.trim().slice(0, 120) || "",
+          href: a.href || "",
+        })).filter(l => l.text.length > 5 && l.href.includes("http"));
+
+        // Get the main page text (truncated)
+        const bodyText = document.body?.innerText?.slice(0, 6000) || "";
+
+        return { links: links.slice(0, 100), bodyText };
+      });
+
+      await page.close();
+
+      if (!pageData.bodyText || pageData.bodyText.length < 100) {
+        console.log(`  · ${site.name}: page too short or blocked`);
+        continue;
+      }
+
+      // Use Groq LLM to extract structured job data
+      const prompt = `Extract all tech/engineering job listings from this career page content.
+
+COMPANY: ${site.name}
+PAGE URL: ${site.url}
+
+PAGE TEXT (truncated):
+${pageData.bodyText.slice(0, 4000)}
+
+LINKS FOUND:
+${pageData.links.slice(0, 40).map(l => `${l.text} → ${l.href}`).join("\n")}
+
+Return ONLY a valid JSON array (no markdown, no backticks). Each job:
+{"title": "Job Title", "location": "City, Country", "url": "https://...", "remote": true/false}
+
+Rules:
+- Only include tech/engineering/product/data/design roles
+- Skip HR, marketing, sales, legal, finance roles
+- If no jobs found, return empty array []
+- URL should be the direct link to that specific job posting
+- Max 30 jobs`;
+
+      let jobs = [];
+      if (GROQ_KEY) {
+        try {
+          const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ_KEY}` },
+            body: JSON.stringify({
+              model: "llama-3.3-70b-versatile",
+              messages: [
+                { role: "system", content: "You extract structured job data from career pages. Return only valid JSON arrays." },
+                { role: "user", content: prompt },
+              ],
+              max_tokens: 2000,
+              temperature: 0.1,
+            }),
+          });
+
+          if (r.ok) {
+            const data = await r.json();
+            const text = data.choices?.[0]?.message?.content || "[]";
+            const clean = text.replace(/```json|```/g, "").trim();
+            jobs = JSON.parse(clean);
+          }
+        } catch (e) { console.error(`  ✗ ${site.name} LLM parse: ${e.message}`); }
+      }
+
+      for (const j of jobs) {
+        if (!j.title) continue;
+        all.push({
+          id: makeId("cp", j.title, site.name),
+          title: j.title,
+          company: site.name,
+          location: j.location || site.country.toUpperCase(),
+          country: site.country || detectCountry(j.location || ""),
+          description: "",
+          url: j.url || site.url,
+          salary: "—",
+          source: "Career Page",
+          posted: today(),
+          category: categorize(j.title),
+          remote: j.remote === true || /remote/i.test(j.location || ""),
+          questions: null,
+        });
+      }
+
+      console.log(`  ✓ ${site.name} → ${jobs.length} tech jobs (AI-parsed)`);
+      await sleep(2000);
+    } catch (e) {
+      console.error(`  ✗ ${site.name}: ${e.message}`);
+    }
+  }
+
+  return all;
+}
+
 
 // ═══════════════════════════════════════════════════════════
 // SOURCE 5: LINKEDIN (Playwright)
@@ -579,6 +854,7 @@ async function main() {
   // Browser-based sources sequentially
   const linkedin = await scrapeLinkedIn(browser).catch(() => []);
   const naukri = await scrapeNaukri(browser).catch(() => []);
+  const customPages = await scrapeCustomPages(browser).catch(() => []);
   await browser.close();
 
   let allJobs = [];
@@ -589,9 +865,10 @@ async function main() {
       console.log(`\n  📦 ${name}: ${result.value.length} jobs`);
     }
   }
-  allJobs.push(...(linkedin || []), ...(naukri || []));
+  allJobs.push(...(linkedin || []), ...(naukri || []), ...(customPages || []));
   console.log(`  📦 linkedin: ${(linkedin || []).length}`);
   console.log(`  📦 naukri: ${(naukri || []).length}`);
+  console.log(`  📦 custom pages: ${(customPages || []).length}`);
 
   // Deduplicate
   const seen = new Set();
