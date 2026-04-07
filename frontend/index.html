@@ -359,6 +359,9 @@ function App() {
   const [status,setStatus] = useState("");
   const [aiQ,setAiQ] = useState("");const [aiR,setAiR] = useState("");const [aiLd,setAiLd] = useState(false);
   const [onboarding,setOnboarding] = useState(false);
+  const [showMenu,setShowMenu] = useState(false);
+  const [selCountries,setSelCountries] = useState([]);
+  const [remoteOnly,setRemoteOnly] = useState(false);
   const [form,setForm] = useState({role:"",experience:"",skills:"",notice:"",compensation:"",expected:"",visa:"",work_mode:"No Preference"});
 
   // Auth listener
@@ -418,7 +421,9 @@ function App() {
   const filtered = jobs.filter(j=>{
     const mc=cat==="All"||(j.category||"").toLowerCase().includes(cat.toLowerCase());
     const ms=!search||[j.title,j.company,j.location,j.description].join(" ").toLowerCase().includes(search.toLowerCase());
-    return mc&&ms;
+    const mr=!remoteOnly||j.remote===true;
+    const ml=selCountries.length===0||selCountries.includes(j.country);
+    return mc&&ms&&mr&&ml;
   });
 
   // Loading state
@@ -460,7 +465,18 @@ function App() {
         <div style={{flex:1}}/>
         <span style={{width:7,height:7,borderRadius:99,background:C.grn,animation:"pulse 2s infinite"}}/>
         <span style={{fontSize:10,fontFamily:M,color:C.t3}}>LIVE</span>
-        {profile?.avatar_url?<img src={profile.avatar_url} style={{width:28,height:28,borderRadius:99,marginLeft:8,cursor:"pointer"}} onClick={signOut} title="Sign out"/>:<button onClick={signOut} style={{background:"none",border:`1px solid ${C.br}`,borderRadius:8,color:C.t3,padding:"4px 12px",cursor:"pointer",fontSize:11,marginLeft:8}}>Sign out</button>}
+        <div style={{position:"relative",marginLeft:8}}>
+          <div onClick={()=>setShowMenu(p=>!p)} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {profile?.avatar_url?<img src={profile.avatar_url} style={{width:28,height:28,borderRadius:99}}/>:<div style={{width:28,height:28,borderRadius:99,background:C.acc+"22",color:C.acc,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700}}>{(profile?.name||"U")[0]}</div>}
+            <svg width="12" height="12" fill="none" stroke={C.t3} strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+          {showMenu&&<div style={{position:"absolute",right:0,top:36,background:C.c1,border:`1px solid ${C.br}`,borderRadius:12,padding:8,minWidth:180,zIndex:100,animation:"up .2s ease"}}>
+            <div style={{padding:"8px 12px",fontSize:13,color:C.t2,borderBottom:`1px solid ${C.br}`,marginBottom:4}}>{profile?.name||"User"}<br/><span style={{fontSize:11,color:C.t3}}>{profile?.email}</span></div>
+            <button onClick={()=>{setTab("vault");setShowMenu(false);}} style={{width:"100%",padding:"8px 12px",background:"transparent",border:"none",color:C.t1,fontSize:13,textAlign:"left",cursor:"pointer",borderRadius:8}}>👤 Profile & vault</button>
+            <button onClick={()=>{setOnboarding(true);setShowMenu(false);}} style={{width:"100%",padding:"8px 12px",background:"transparent",border:"none",color:C.t1,fontSize:13,textAlign:"left",cursor:"pointer",borderRadius:8}}>✏️ Edit onboarding</button>
+            <button onClick={()=>{signOut();setShowMenu(false);}} style={{width:"100%",padding:"8px 12px",background:"transparent",border:"none",color:C.red,fontSize:13,textAlign:"left",cursor:"pointer",borderRadius:8,marginTop:4,borderTop:`1px solid ${C.br}`,borderRadius:0}}>↩ Sign out</button>
+          </div>}
+        </div>
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.br}`,background:C.c1}}>
@@ -474,7 +490,21 @@ function App() {
             <button onClick={doSearch} disabled={loading} style={{padding:"0 22px",background:loading?C.c2:C.grad,color:loading?C.t3:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:800,cursor:loading?"wait":"pointer"}}>HUNT</button>
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>{QUICK.map(p=><Chip key={p} active={search===p} onClick={()=>setSearch(p)}>{p}</Chip>)}</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>{CATS.map(c=><Chip key={c} active={cat===c} color={C.pur} onClick={()=>setCat(c)}>{c}</Chip>)}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>{CATS.map(c=><Chip key={c} active={cat===c} color={C.pur} onClick={()=>setCat(c)}>{c}</Chip>)}</div>
+
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8,alignItems:"center"}}>
+            <span style={{fontSize:10,fontFamily:M,color:C.t3,letterSpacing:1}}>REGION:</span>
+            {Object.entries(FLAGS).filter(([k])=>k!=="other").map(([cc,flag])=>(
+              <Chip key={cc} active={selCountries.includes(cc)} color={C.blu} onClick={()=>setSelCountries(p=>p.includes(cc)?p.filter(c=>c!==cc):[...p,cc])}>{flag} {cc.toUpperCase()}</Chip>
+            ))}
+          </div>
+
+          <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+            <button onClick={()=>setRemoteOnly(p=>!p)} style={{padding:"5px 16px",fontSize:12,border:`1px solid ${remoteOnly?C.grn+"55":C.br}`,borderRadius:99,background:remoteOnly?C.grn+"15":"transparent",color:remoteOnly?C.grn:C.t3,cursor:"pointer",fontWeight:600,fontFamily:M,display:"flex",alignItems:"center",gap:5}}>
+              🌍 Remote only{remoteOnly&&" ✓"}
+            </button>
+            {(selCountries.length>0||remoteOnly)&&<button onClick={()=>{setSelCountries([]);setRemoteOnly(false);}} style={{padding:"5px 12px",fontSize:11,border:`1px solid ${C.br}`,borderRadius:99,background:"transparent",color:C.t3,cursor:"pointer"}}>Clear filters</button>}
+          </div>
           {loading&&<ScanBar/>}
           {status&&<p style={{fontSize:11,fontFamily:M,color:C.t3,margin:"0 0 12px"}}>{status} · {filtered.length} showing</p>}
           <div style={{display:"flex",flexDirection:"column",gap:12}}>{filtered.map(j=><JobCard key={j.id} job={j} applied={applied.includes(j.id)} onApply={j=>setApplyM(j)} onMatch={j=>setMatchM(j)}/>)}</div>
