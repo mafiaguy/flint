@@ -1,0 +1,77 @@
+name: 🚀 Deploy FLINT to GitHub Pages
+
+on:
+  # Runs on every push to main (so config updates go live)
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-pages.yml'
+
+  # Manual trigger
+  workflow_dispatch:
+
+# Sets permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy at a time
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      # ═══════════════════════════════════════════
+      # Inject secrets into index.html
+      # Replaces __SUPABASE_URL__ and __SUPABASE_KEY__
+      # with actual values from GitHub Secrets
+      # ═══════════════════════════════════════════
+      - name: 🔐 Inject secrets into frontend
+        working-directory: ./frontend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "Injecting Supabase config..."
+          sed -i "s|__SUPABASE_URL__|${SUPABASE_URL}|g" index.html
+          sed -i "s|__SUPABASE_KEY__|${SUPABASE_KEY}|g" index.html
+          echo "✓ Config injected"
+
+          # Verify placeholders were replaced (fail if not)
+          if grep -q "__SUPABASE_URL__" index.html; then
+            echo "ERROR: SUPABASE_URL secret is missing!"
+            exit 1
+          fi
+          if grep -q "__SUPABASE_KEY__" index.html; then
+            echo "ERROR: SUPABASE_ANON_KEY secret is missing!"
+            exit 1
+          fi
+          echo "✓ All placeholders replaced successfully"
+
+      - name: 📦 Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: 📤 Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Only upload the frontend folder
+          path: ./frontend
+
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
