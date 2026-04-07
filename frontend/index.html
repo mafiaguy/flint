@@ -357,6 +357,7 @@ function ApplyModal({job,qa,profile,onClose,onApply}) {
   const [jobAns,setJobAns] = useState({});
   const [extras,setExtras] = useState([]);const [nq,setNq]=useState("");const [na,setNa]=useState("");
   const [cover,setCover] = useState("");const [genL,setGenL] = useState(false);
+  const [showSaved,setShowSaved] = useState(false);
   const allQ = qa.map(q=>({q:q.question||q.q,a:q.answer||q.a})).concat(extras);
 
   // On mount: scrape REAL form questions from the job URL, then AI-fill answers
@@ -460,9 +461,7 @@ function ApplyModal({job,qa,profile,onClose,onApply}) {
       {aiLoading ? (
         <div style={{textAlign:"center",padding:"24px 0"}}>
           <div style={{width:28,height:28,border:`3px solid ${C.br}`,borderTopColor:C.pur,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto"}}/>
-          <p style={{color:C.t3,fontSize:13,marginTop:10}}>
-            {jobQuestions.length > 0 ? "AI is filling answers from your profile..." : "AI is predicting application questions..."}
-          </p>
+          <p style={{color:C.t3,fontSize:13,marginTop:10}}>Fetching real application form fields...</p>
         </div>
       ) : displayQuestions.length > 0 && (
         <>
@@ -470,49 +469,57 @@ function ApplyModal({job,qa,profile,onClose,onApply}) {
             <span style={{width:6,height:6,borderRadius:99,background:isAiPredicted?C.pur:C.grn,display:"inline-block"}}/>
             {isAiPredicted
               ? `AI-PREDICTED QUESTIONS (${displayQuestions.length} likely form fields)`
-              : `APPLICATION FORM QUESTIONS (${displayQuestions.length} detected from ${job.source})`
+              : `REAL FORM FIELDS (${displayQuestions.length} from ${job.source})`
             }
           </div>
-          {isAiPredicted && (
-            <p style={{fontSize:12,color:C.t3,margin:"0 0 12px",lineHeight:1.5}}>
-              These are questions the application form will likely ask. Answers are pre-filled from your profile — review and edit before applying.
-            </p>
-          )}
-          {displayQuestions.map((q,i)=>(
+          {displayQuestions.map((q,i)=>{
+            const isFile = q.type==="file";
+            const isResume = isFile || /resume|cv/i.test(q.label||"");
+
+            return (
             <div key={`dq-${i}`} style={{marginBottom:12}}>
               <label style={{fontSize:12,fontWeight:600,color:C.t2,display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
                 {q.label || q.q}
                 {q.required && <span style={{color:C.red,fontSize:10}}>required</span>}
-                {isAiPredicted && q.confidence && (
-                  <span style={{fontSize:9,fontFamily:M,padding:"1px 6px",borderRadius:99,
-                    background:q.confidence==="high"?C.grn+"22":q.confidence==="medium"?C.acc+"22":C.br,
-                    color:q.confidence==="high"?C.grn:q.confidence==="medium"?C.acc:C.t3,
-                  }}>{q.confidence}</span>
-                )}
+                {!isAiPredicted && <span style={{fontSize:9,fontFamily:M,padding:"1px 6px",borderRadius:99,background:C.grn+"22",color:C.grn}}>real</span>}
               </label>
-              {q.type==="multi_value_single_select" && q.options?.length > 0 ? (
+
+              {/* Resume field — auto-attach from vault */}
+              {isResume ? (
+                <div style={{padding:"10px 14px",border:`1px solid ${profile?.resume_url?C.grn+"55":C.br}`,borderRadius:8,background:C.c1,fontSize:13}}>
+                  {profile?.resume_url ? (
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{color:C.grn}}>✓ {profile.resume_url.split("/").pop() || "Resume.pdf"} (from Vault)</span>
+                      <a href={profile.resume_url} target="_blank" style={{color:C.blu,fontSize:12}}>View ↗</a>
+                    </div>
+                  ) : (
+                    <span style={{color:C.acc}}>⚠ Upload your resume in the Vault tab first</span>
+                  )}
+                </div>
+              ) : q.type==="select" && q.options?.length > 0 ? (
                 <select value={jobAns[i]||""} onChange={e=>setJobAns(p=>({...p,[i]:e.target.value}))} style={{width:"100%",padding:"10px 14px",border:`1px solid ${C.br}`,borderRadius:8,fontSize:14,background:C.c1,color:C.t1}}>
                   <option value="">Select...</option>
-                  {q.options.map(o=><option key={o} value={o}>{o}</option>)}
+                  {q.options.map(o=><option key={o.label||o} value={o.value||o.label||o}>{o.label||o}</option>)}
                 </select>
+              ) : q.type==="textarea" ? (
+                <textarea value={jobAns[i]||""} onChange={e=>setJobAns(p=>({...p,[i]:e.target.value}))} rows={3} style={{resize:"vertical",lineHeight:1.6}}/>
               ) : (
                 <div style={{position:"relative"}}>
-                  <input value={jobAns[i]||""} onChange={e=>setJobAns(p=>({...p,[i]:e.target.value}))}
-                    style={{paddingRight:isAiPredicted&&jobAns[i]?50:14}}/>
-                  {isAiPredicted && jobAns[i] && (
-                    <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:9,fontFamily:M,color:C.pur,background:C.pur+"15",padding:"2px 6px",borderRadius:4}}>AI</span>
-                  )}
+                  <input value={jobAns[i]||""} onChange={e=>setJobAns(p=>({...p,[i]:e.target.value}))}/>
+                  {jobAns[i] && <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:9,fontFamily:M,color:C.pur,background:C.pur+"15",padding:"2px 6px",borderRadius:4}}>AI</span>}
                 </div>
               )}
             </div>
-          ))}
+          );})}
           <div style={{borderTop:`1px solid ${C.br}`,margin:"16px 0"}}/>
         </>
       )}
 
-      {/* User's saved Q&A */}
-      <div style={{fontSize:10,fontFamily:M,letterSpacing:2,color:C.t3,marginBottom:10}}>YOUR SAVED ANSWERS</div>
-      {allQ.map((q,i)=>(<div key={i} style={{marginBottom:10}}><label style={{fontSize:12,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>{q.q}</label><input value={ans[i]??q.a} onChange={e=>setAns(p=>({...p,[i]:e.target.value}))}/></div>))}
+      {/* Saved answers — collapsed by default, only for reference */}
+      <button onClick={()=>setShowSaved(p=>!p)} style={{width:"100%",padding:"10px 14px",background:C.c2,border:`1px solid ${C.br}`,borderRadius:8,color:C.t3,cursor:"pointer",fontSize:11,fontFamily:M,letterSpacing:1,textAlign:"left",marginBottom:showSaved?10:0}}>
+        {showSaved?"▾":"▸"} YOUR SAVED ANSWERS ({allQ.length}) — for reference only
+      </button>
+      {showSaved && allQ.map((q,i)=>(<div key={i} style={{marginBottom:10,marginLeft:14}}><label style={{fontSize:12,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>{q.q}</label><input value={ans[i]??q.a} onChange={e=>setAns(p=>({...p,[i]:e.target.value}))}/></div>))}
 
       <div style={{background:C.bg,borderRadius:12,padding:14,margin:"16px 0"}}>
         <div style={{fontSize:10,fontFamily:M,letterSpacing:2,color:C.pur,marginBottom:8}}>ADD PORTAL QUESTION</div>
