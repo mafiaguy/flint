@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS applications (
   answers      JSONB,
   status       TEXT DEFAULT 'applied',   -- applied, interviewing, offered, rejected
   applied_at   TIMESTAMPTZ DEFAULT now(),
-  user_id      TEXT                      -- optional: for multi-user support later
+  user_id      UUID                      -- set by migration 002 with auth.users FK
 );
 
 CREATE INDEX IF NOT EXISTS idx_apps_user    ON applications (user_id);
