@@ -277,7 +277,7 @@ function JobCard({job,applied,onApply,onMatch}) {
           {job.salary&&job.salary!=="—"&&<p style={{margin:"6px 0 0",fontSize:14,fontWeight:700,color:C.grn,fontFamily:M}}>{job.salary}</p>}
         </div>
       </div>
-      {exp&&<div style={{marginTop:14,padding:14,background:C.bg,borderRadius:10,border:`1px solid ${C.br}`,fontSize:13,lineHeight:1.7,color:C.t2,maxHeight:200,overflow:"auto"}}>{job.description||"No description."}</div>}
+      {exp&&<div style={{marginTop:14,padding:14,background:C.bg,borderRadius:10,border:`1px solid ${C.br}`,fontSize:13,lineHeight:1.7,color:C.t2,maxHeight:400,overflow:"auto",whiteSpace:"pre-wrap"}}>{job.description||"No description. Click the job link for full details."}</div>}
       <div style={{display:"flex",gap:8,marginTop:14,flexWrap:"wrap",alignItems:"center"}}>
         {job.category&&<span style={{fontSize:10,fontFamily:M,color:C.t3,background:C.c2,padding:"4px 10px",borderRadius:99}}>{job.category}</span>}
         <div style={{flex:1}}/>
@@ -293,7 +293,13 @@ function JobCard({job,applied,onApply,onMatch}) {
 // APPLY MODAL
 // ═══════════════════════════════════
 function ApplyModal({job,qa,profile,onClose,onApply}) {
+  // Parse auto-detected questions from the job listing (Greenhouse API)
+  const jobQuestions = React.useMemo(()=>{
+    try { return job.questions ? JSON.parse(job.questions) : []; } catch { return []; }
+  },[job]);
+
   const [ans,setAns]=useState(()=>{const o={};qa.forEach((_,i)=>o[i]=qa[i].answer||qa[i].a||"");return o});
+  const [jobAns,setJobAns]=useState(()=>{const o={};jobQuestions.forEach((_,i)=>o[i]="");return o});
   const [extras,setExtras]=useState([]);const [nq,setNq]=useState("");const [na,setNa]=useState("");
   const [cover,setCover]=useState("");const [genL,setGenL]=useState(false);
   const allQ=qa.map(q=>({q:q.question||q.q,a:q.answer||q.a})).concat(extras);
@@ -310,8 +316,35 @@ function ApplyModal({job,qa,profile,onClose,onApply}) {
         </div>
         <button onClick={onClose} style={{background:"none",border:"none",color:C.t3,cursor:"pointer",fontSize:20}}>✕</button>
       </div>
+
+      {/* Auto-detected questions from the job application form */}
+      {jobQuestions.length > 0 && <>
+        <div style={{fontSize:10,fontFamily:M,letterSpacing:2,color:C.grn,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+          <span style={{width:6,height:6,borderRadius:99,background:C.grn,display:"inline-block"}}/>
+          APPLICATION FORM QUESTIONS ({jobQuestions.length} detected from {job.source})
+        </div>
+        {jobQuestions.map((q,i)=>(
+          <div key={`jq-${i}`} style={{marginBottom:10}}>
+            <label style={{fontSize:12,fontWeight:600,color:C.t2,display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+              {q.label} {q.required&&<span style={{color:C.red,fontSize:10}}>required</span>}
+            </label>
+            {q.type==="multi_value_single_select" && q.options?.length > 0 ? (
+              <select value={jobAns[i]||""} onChange={e=>setJobAns(p=>({...p,[i]:e.target.value}))} style={{width:"100%",padding:"10px 14px",border:`1px solid ${C.br}`,borderRadius:8,fontSize:14,background:C.c1,color:C.t1}}>
+                <option value="">Select...</option>
+                {q.options.map(o=><option key={o} value={o}>{o}</option>)}
+              </select>
+            ) : (
+              <input value={jobAns[i]||""} onChange={e=>setJobAns(p=>({...p,[i]:e.target.value}))} placeholder={q.type==="long_text"?"Type your answer...":""}/>
+            )}
+          </div>
+        ))}
+        <div style={{borderTop:`1px solid ${C.br}`,margin:"16px 0"}}/>
+      </>}
+
+      {/* User's saved Q&A (auto-filled) */}
       <div style={{fontSize:10,fontFamily:M,letterSpacing:2,color:C.t3,marginBottom:10}}>YOUR SAVED ANSWERS</div>
       {allQ.map((q,i)=>(<div key={i} style={{marginBottom:10}}><label style={{fontSize:12,fontWeight:600,color:C.t2,display:"block",marginBottom:3}}>{q.q}</label><input value={ans[i]??q.a} onChange={e=>setAns(p=>({...p,[i]:e.target.value}))}/></div>))}
+
       <div style={{background:C.bg,borderRadius:12,padding:14,margin:"16px 0"}}>
         <div style={{fontSize:10,fontFamily:M,letterSpacing:2,color:C.pur,marginBottom:8}}>ADD PORTAL QUESTION</div>
         <input placeholder="Question..." value={nq} onChange={e=>setNq(e.target.value)} style={{marginBottom:6}}/>
@@ -320,11 +353,13 @@ function ApplyModal({job,qa,profile,onClose,onApply}) {
           <button onClick={()=>{if(nq){setExtras(p=>[...p,{q:nq,a:na}]);setAns(p=>({...p,[allQ.length]:na}));db.addQA(nq,na);setNq("");setNa("");}}} style={{padding:"10px 18px",background:"transparent",border:`1px solid ${C.pur}`,borderRadius:8,color:C.pur,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}}>+ Save</button>
         </div>
       </div>
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"16px 0 8px"}}>
         <span style={{fontSize:10,fontFamily:M,letterSpacing:2,color:C.t3}}>AI COVER LETTER</span>
         <button onClick={gen} disabled={genL} style={{padding:"6px 16px",background:"transparent",border:`1px solid ${C.pur}55`,borderRadius:8,color:C.pur,cursor:genL?"wait":"pointer",fontSize:12,fontWeight:600}}>⚡ {genL?"Generating...":"Generate"}</button>
       </div>
       <textarea value={cover} onChange={e=>setCover(e.target.value)} placeholder="Click Generate or write your own..." rows={5} style={{resize:"vertical",lineHeight:1.6}}/>
+
       <div style={{display:"flex",gap:10,marginTop:20}}>
         <a href={job.url} target="_blank" rel="noopener noreferrer" style={{flex:1,padding:14,background:C.c2,color:C.t1,borderRadius:12,textAlign:"center",fontWeight:700,fontSize:14,border:`1px solid ${C.br}`,display:"block"}}>Open on {job.source} ↗</a>
         <button onClick={()=>{onApply(job,cover);onClose();}} style={{padding:"14px 28px",background:C.grn,color:"#000",border:"none",borderRadius:12,fontWeight:800,fontSize:14,cursor:"pointer"}}>✓ Applied</button>
