@@ -86,6 +86,10 @@ export const db = {
     await sb.from("applications").update({ notes }).eq("id", id);
   },
 
+  async deleteApp(id) {
+    await sb.from("applications").delete().eq("id", id);
+  },
+
   // Resume
   async uploadResume(file) {
     const { data: { user } } = await sb.auth.getUser();

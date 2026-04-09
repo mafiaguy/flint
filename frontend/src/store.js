@@ -153,6 +153,11 @@ const useStore = create((set, get) => ({
     }));
   },
 
+  deleteApp: async (id) => {
+    await db.deleteApp(id);
+    set((s) => ({ applications: s.applications.filter((a) => a.id !== id) }));
+  },
+
   // ── Q&A ──
   addQA: async (q, a) => {
     await db.addQA(q, a);

@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay,
+  DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ import { db } from '@/api';
 import useStore from '@/store';
 import { PIPELINE_STAGES } from '@/theme';
 
-function AppCard({ app, isDragging, onUpdateNotes, onInterviewPrep }) {
+function AppCard({ app, isDragging, onUpdateNotes, onInterviewPrep, onDelete, onMoveStage }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(app.notes || '');
   const [editingNotes, setEditingNotes] = useState(false);
@@ -52,6 +53,24 @@ function AppCard({ app, isDragging, onUpdateNotes, onInterviewPrep }) {
       </Button>
       {expanded && (
         <div className="mt-2 border-t pt-2 space-y-3" onClick={(e) => e.stopPropagation()}>
+          {/* Move to stage */}
+          <div>
+            <label className="text-xs text-muted-foreground">Move to</label>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {PIPELINE_STAGES.filter((s) => s.id !== app.status).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => onMoveStage(app.id, s.id)}
+                  className="rounded px-2 py-0.5 text-xs border hover:bg-accent transition-colors"
+                  style={{ borderColor: s.color + '44', color: s.color }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
           <div>
             <label className="text-xs text-muted-foreground">Notes</label>
             {editingNotes ? (
@@ -68,6 +87,8 @@ function AppCard({ app, isDragging, onUpdateNotes, onInterviewPrep }) {
               </div>
             )}
           </div>
+
+          {/* Interview prep */}
           {['interview', 'second_interview'].includes(app.status) && (
             <div>
               <Button variant="outline" size="sm" className="w-full" onClick={handlePrep} disabled={prepLoading}>
@@ -76,6 +97,11 @@ function AppCard({ app, isDragging, onUpdateNotes, onInterviewPrep }) {
               {prepContent && <div className="mt-2 rounded-md border p-2 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap max-h-60 overflow-auto">{prepContent}</div>}
             </div>
           )}
+
+          {/* Remove */}
+          <Button variant="ghost" size="sm" className="w-full text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => onDelete(app.id)}>
+            Remove from tracker
+          </Button>
         </div>
       )}
     </Card>
@@ -91,10 +117,15 @@ function SortableAppCard(props) {
   );
 }
 
-function PipelineColumn({ stage, apps, onUpdateNotes, onInterviewPrep }) {
+function PipelineColumn({ stage, apps, onUpdateNotes, onInterviewPrep, onDelete, onMoveStage }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-${stage.id}`, data: { stageId: stage.id } });
   const ids = apps.map((a) => a.id || a.job_id);
   return (
-    <div className="flex min-w-[260px] flex-1 flex-col rounded-lg border bg-background" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+    <div
+      ref={setNodeRef}
+      className={`flex min-w-[260px] flex-1 flex-col rounded-lg border bg-background transition-colors ${isOver ? 'border-primary/50 bg-accent/30' : ''}`}
+      style={{ maxHeight: 'calc(100vh - 160px)' }}
+    >
       <div className="flex items-center gap-2 border-b px-3 py-2.5">
         <div className="h-2 w-2 rounded-full" style={{ background: stage.color }} />
         <span className="text-sm font-medium">{stage.label}</span>
@@ -102,7 +133,9 @@ function PipelineColumn({ stage, apps, onUpdateNotes, onInterviewPrep }) {
       </div>
       <div className="flex-1 overflow-auto p-2 space-y-2">
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-          {apps.map((app) => <SortableAppCard key={app.id || app.job_id} app={app} onUpdateNotes={onUpdateNotes} onInterviewPrep={onInterviewPrep} />)}
+          {apps.map((app) => (
+            <SortableAppCard key={app.id || app.job_id} app={app} onUpdateNotes={onUpdateNotes} onInterviewPrep={onInterviewPrep} onDelete={onDelete} onMoveStage={onMoveStage} />
+          ))}
         </SortableContext>
         {apps.length === 0 && <p className="p-4 text-center text-xs text-muted-foreground">Drag cards here</p>}
       </div>
@@ -111,7 +144,7 @@ function PipelineColumn({ stage, apps, onUpdateNotes, onInterviewPrep }) {
 }
 
 export default function Tracker() {
-  const { applications, updateAppStatus, updateAppNotes, profile } = useStore();
+  const { applications, updateAppStatus, updateAppNotes, deleteApp, profile } = useStore();
   const [activeId, setActiveId] = useState(null);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const [viewMode, setViewMode] = useState(isMobile ? 'list' : 'kanban');
@@ -132,12 +165,27 @@ export default function Tracker() {
     if (!over || !active) return;
     const draggedApp = active.data?.current?.app;
     if (!draggedApp) return;
+
     let targetStage = null;
-    for (const stage of PIPELINE_STAGES) {
-      if ((columns[stage.id] || []).some((a) => (a.id || a.job_id) === over.id)) { targetStage = stage.id; break; }
+
+    // Check if dropped on a column droppable
+    if (over.data?.current?.stageId) {
+      targetStage = over.data.current.stageId;
     }
-    if (!targetStage) { const ms = PIPELINE_STAGES.find((s) => s.id === over.id); if (ms) targetStage = ms.id; }
-    if (targetStage && targetStage !== draggedApp.status) updateAppStatus(draggedApp.id, targetStage);
+
+    // Check if dropped on a card — find which column that card is in
+    if (!targetStage) {
+      for (const stage of PIPELINE_STAGES) {
+        if ((columns[stage.id] || []).some((a) => (a.id || a.job_id) === over.id)) {
+          targetStage = stage.id;
+          break;
+        }
+      }
+    }
+
+    if (targetStage && targetStage !== draggedApp.status) {
+      updateAppStatus(draggedApp.id, targetStage);
+    }
   };
 
   const handleInterviewPrep = async (app) => {
@@ -168,11 +216,13 @@ export default function Tracker() {
           <p className="mt-1 text-sm text-muted-foreground">When you mark jobs as applied, they'll show up here.</p>
         </div>
       ) : viewMode === 'kanban' ? (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(e.active.id)} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={(e) => setActiveId(e.active.id)} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 300 }}>
-            {activeStages.map((stage) => <PipelineColumn key={stage.id} stage={stage} apps={columns[stage.id] || []} onUpdateNotes={updateAppNotes} onInterviewPrep={handleInterviewPrep} />)}
+            {activeStages.map((stage) => (
+              <PipelineColumn key={stage.id} stage={stage} apps={columns[stage.id] || []} onUpdateNotes={updateAppNotes} onInterviewPrep={handleInterviewPrep} onDelete={deleteApp} onMoveStage={updateAppStatus} />
+            ))}
           </div>
-          <DragOverlay>{activeApp ? <div className="rotate-1 opacity-90"><AppCard app={activeApp} isDragging={false} onUpdateNotes={() => {}} onInterviewPrep={() => {}} /></div> : null}</DragOverlay>
+          <DragOverlay>{activeApp ? <div className="rotate-1 opacity-90"><AppCard app={activeApp} isDragging={false} onUpdateNotes={() => {}} onInterviewPrep={() => {}} onDelete={() => {}} onMoveStage={() => {}} /></div> : null}</DragOverlay>
         </DndContext>
       ) : (
         <div className="space-y-6">
@@ -187,7 +237,9 @@ export default function Tracker() {
                   <span className="text-xs text-muted-foreground">({apps.length})</span>
                 </div>
                 <div className="space-y-2">
-                  {apps.map((app) => <AppCard key={app.id || app.job_id} app={app} isDragging={false} onUpdateNotes={updateAppNotes} onInterviewPrep={handleInterviewPrep} />)}
+                  {apps.map((app) => (
+                    <AppCard key={app.id || app.job_id} app={app} isDragging={false} onUpdateNotes={updateAppNotes} onInterviewPrep={handleInterviewPrep} onDelete={deleteApp} onMoveStage={updateAppStatus} />
+                  ))}
                 </div>
               </div>
             );
