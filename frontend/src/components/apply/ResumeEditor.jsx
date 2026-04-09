@@ -359,102 +359,131 @@ function LatexResumePDF({ nodes, profile, email }) {
   );
 }
 
-// ── Diff view — line-by-line comparison ──
-function DiffView({ original, modified }) {
-  const origLines = original.split('\n');
-  const modLines = modified.split('\n');
+// ── Semantic section-based diff ──
+// Groups changes by resume section (Summary, Skills, Experience, etc.)
+function SectionDiffView({ originalNodes, modifiedNodes }) {
+  // Group nodes by section
+  function groupBySection(nodes) {
+    const sections = {};
+    let currentSection = 'Header';
+    for (const node of nodes) {
+      if (node.type === 'section') {
+        currentSection = strip(node.title || '');
+        if (!sections[currentSection]) sections[currentSection] = [];
+        continue;
+      }
+      if (!sections[currentSection]) sections[currentSection] = [];
+      sections[currentSection].push(node);
+    }
+    return sections;
+  }
 
-  // Simple LCS-based diff
-  const diff = computeDiff(origLines, modLines);
+  function nodeToText(node) {
+    if (node.type === 'subheading') return `${strip(node.title || '')} | ${strip(node.date || '')} | ${strip(node.subtitle || '')} | ${strip(node.location || '')}`;
+    if (node.type === 'subheading_cont') return strip(node.title || '');
+    if (node.type === 'item') return strip(node.content || '');
+    if (node.type === 'text') return strip(node.content || '');
+    if (node.type === 'project') return `${strip(node.content || '')} | ${strip(node.date || '')}`;
+    if (node.type === 'header') return strip(node.content || '');
+    return '';
+  }
+
+  const origSections = groupBySection(originalNodes);
+  const modSections = groupBySection(modifiedNodes);
+  const allSections = [...new Set([...Object.keys(origSections), ...Object.keys(modSections)])];
+
+  let totalAdded = 0, totalRemoved = 0, totalChanged = 0;
+
+  const sectionDiffs = allSections.map(section => {
+    const origItems = (origSections[section] || []).map(nodeToText).filter(Boolean);
+    const modItems = (modSections[section] || []).map(nodeToText).filter(Boolean);
+
+    if (!origSections[section]) {
+      totalAdded += modItems.length;
+      return { section, type: 'added', items: modItems };
+    }
+    if (!modSections[section]) {
+      totalRemoved += origItems.length;
+      return { section, type: 'removed', items: origItems };
+    }
+
+    // Find changed items
+    const origSet = new Set(origItems);
+    const modSet = new Set(modItems);
+    const added = modItems.filter(i => !origSet.has(i));
+    const removed = origItems.filter(i => !modSet.has(i));
+
+    if (added.length === 0 && removed.length === 0) return null; // unchanged
+
+    totalAdded += added.length;
+    totalRemoved += removed.length;
+    totalChanged++;
+    return { section, type: 'changed', added, removed };
+  }).filter(Boolean);
+
+  if (sectionDiffs.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '30px 20px' }}>
+        <p style={{ color: C.t3, fontSize: 13 }}>No differences detected between original and modified resume.</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{
-      background: '#0d1117', border: `1px solid ${C.br}`, borderRadius: 8,
-      maxHeight: 500, overflow: 'auto', fontSize: 11.5, fontFamily: MONO, lineHeight: 1.5,
-    }}>
-      {diff.map((line, i) => {
-        const bg = line.type === 'add' ? '#1a3a1a' : line.type === 'remove' ? '#3a1a1a' : 'transparent';
-        const color = line.type === 'add' ? '#4ade80' : line.type === 'remove' ? '#f87171' : '#8b949e';
-        const prefix = line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' ';
-        return (
-          <div key={i} style={{ padding: '1px 12px', background: bg, borderLeft: `3px solid ${line.type === 'add' ? '#22c55e' : line.type === 'remove' ? '#ef4444' : 'transparent'}` }}>
-            <span style={{ color: '#555', userSelect: 'none', display: 'inline-block', width: 20 }}>{prefix}</span>
-            <span style={{ color, whiteSpace: 'pre-wrap' }}>{line.text}</span>
-          </div>
-        );
-      })}
-      <div style={{ padding: '10px 12px', borderTop: `1px solid ${C.br}`, color: C.t3, fontSize: 10 }}>
-        {diff.filter(l => l.type === 'add').length} additions, {diff.filter(l => l.type === 'remove').length} removals
+    <div style={{ maxHeight: 500, overflow: 'auto' }}>
+      {/* Summary bar */}
+      <div style={{ display: 'flex', gap: 16, padding: '10px 14px', background: C.c2, borderRadius: 8, marginBottom: 12, fontSize: 12, fontFamily: MONO }}>
+        <span style={{ color: C.t3 }}>{totalChanged} section{totalChanged !== 1 ? 's' : ''} changed</span>
+        <span style={{ color: '#4ade80' }}>+{totalAdded} added</span>
+        <span style={{ color: '#f87171' }}>-{totalRemoved} removed</span>
       </div>
+
+      {sectionDiffs.map((diff, i) => (
+        <div key={i} style={{ marginBottom: 14, borderRadius: 8, border: `1px solid ${C.br}`, overflow: 'hidden' }}>
+          {/* Section header */}
+          <div style={{
+            padding: '8px 14px', background: C.c2, fontWeight: 700, fontSize: 12,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            color: diff.type === 'added' ? '#4ade80' : diff.type === 'removed' ? '#f87171' : C.t1,
+          }}>
+            <span>{diff.section}</span>
+            <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 400, color: C.t3 }}>
+              {diff.type === 'added' ? 'NEW SECTION' : diff.type === 'removed' ? 'REMOVED' : `+${diff.added.length} -${diff.removed.length}`}
+            </span>
+          </div>
+
+          <div style={{ padding: '8px 14px' }}>
+            {diff.type === 'added' && diff.items.map((item, j) => (
+              <div key={j} style={{ padding: '3px 8px', marginBottom: 2, background: '#1a3a1a', borderLeft: '3px solid #22c55e', borderRadius: 2, fontSize: 11.5, color: '#4ade80', lineHeight: 1.5 }}>
+                + {item}
+              </div>
+            ))}
+
+            {diff.type === 'removed' && diff.items.map((item, j) => (
+              <div key={j} style={{ padding: '3px 8px', marginBottom: 2, background: '#3a1a1a', borderLeft: '3px solid #ef4444', borderRadius: 2, fontSize: 11.5, color: '#f87171', lineHeight: 1.5, textDecoration: 'line-through', opacity: 0.8 }}>
+                - {item}
+              </div>
+            ))}
+
+            {diff.type === 'changed' && (
+              <>
+                {diff.removed.map((item, j) => (
+                  <div key={`r${j}`} style={{ padding: '3px 8px', marginBottom: 2, background: '#3a1a1a', borderLeft: '3px solid #ef4444', borderRadius: 2, fontSize: 11.5, color: '#f87171', lineHeight: 1.5 }}>
+                    - {item}
+                  </div>
+                ))}
+                {diff.added.map((item, j) => (
+                  <div key={`a${j}`} style={{ padding: '3px 8px', marginBottom: 2, background: '#1a3a1a', borderLeft: '3px solid #22c55e', borderRadius: 2, fontSize: 11.5, color: '#4ade80', lineHeight: 1.5 }}>
+                    + {item}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
-}
-
-function computeDiff(origLines, modLines) {
-  const result = [];
-  const origSet = new Set(origLines.map((l, i) => `${i}:${l.trim()}`));
-  const modSet = new Set(modLines.map((l, i) => `${i}:${l.trim()}`));
-
-  // Build a map of content → line indices
-  const origMap = new Map();
-  origLines.forEach((l, i) => {
-    const key = l.trim();
-    if (!origMap.has(key)) origMap.set(key, []);
-    origMap.get(key).push(i);
-  });
-  const modMap = new Map();
-  modLines.forEach((l, i) => {
-    const key = l.trim();
-    if (!modMap.has(key)) modMap.set(key, []);
-    modMap.get(key).push(i);
-  });
-
-  // Mark unchanged lines (same content, consumed in order)
-  const origUsed = new Set();
-  const modUsed = new Set();
-  const unchanged = new Map(); // modIdx → origIdx
-
-  for (let mi = 0; mi < modLines.length; mi++) {
-    const key = modLines[mi].trim();
-    const origIdxs = origMap.get(key);
-    if (origIdxs) {
-      for (const oi of origIdxs) {
-        if (!origUsed.has(oi)) {
-          origUsed.add(oi);
-          modUsed.add(mi);
-          unchanged.set(mi, oi);
-          break;
-        }
-      }
-    }
-  }
-
-  // Now interleave: show removed lines (in orig not matched), unchanged, added (in mod not matched)
-  let oi = 0, mi = 0;
-  while (oi < origLines.length || mi < modLines.length) {
-    // Output removed lines from orig
-    while (oi < origLines.length && !origUsed.has(oi)) {
-      if (origLines[oi].trim()) result.push({ type: 'remove', text: origLines[oi] });
-      oi++;
-    }
-    // Output added lines from mod
-    while (mi < modLines.length && !modUsed.has(mi)) {
-      if (modLines[mi].trim()) result.push({ type: 'add', text: modLines[mi] });
-      mi++;
-    }
-    // Output matched line
-    if (mi < modLines.length && unchanged.has(mi)) {
-      result.push({ type: 'same', text: modLines[mi] });
-      oi = unchanged.get(mi) + 1;
-      mi++;
-    } else {
-      // Safety: advance
-      if (mi < modLines.length) { result.push({ type: 'add', text: modLines[mi] }); mi++; }
-      if (oi < origLines.length) { result.push({ type: 'remove', text: origLines[oi] }); oi++; }
-    }
-  }
-
-  return result;
 }
 
 // ── Main component ──
@@ -462,6 +491,7 @@ export default function ResumeEditor({ job }) {
   const { profile, setProfile } = useStore();
   const [latexSrc, setLatexSrc] = useState('');
   const [originalLatex, setOriginalLatex] = useState('');
+  const [originalNodes, setOriginalNodes] = useState([]);
   const [nodes, setNodes] = useState([]);
   const [suggestions, setSuggestions] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -475,12 +505,13 @@ export default function ResumeEditor({ job }) {
   useEffect(() => {
     const rt = profile?.resume_text || '';
     if (isLatex(rt)) {
-      // If it's mixed garbage, extract just the LaTeX part
       const clean = isGarbageText(rt) ? extractCleanLatex(rt) : rt;
       if (clean) {
+        const parsed = parseLatexToAST(clean);
         setLatexSrc(clean);
         setOriginalLatex(clean);
-        setNodes(parseLatexToAST(clean));
+        setOriginalNodes(parsed);
+        setNodes(parsed);
       }
     }
   }, []);
@@ -518,7 +549,8 @@ ${src.slice(0, 6000)}`,
   const saveToProfile = async () => {
     await db.saveProfile({ resume_text: latexSrc });
     setProfile({ ...profile, resume_text: latexSrc });
-    setOriginalLatex(latexSrc); // saved version becomes the new baseline for diffs
+    setOriginalLatex(latexSrc);
+    setOriginalNodes(parseLatexToAST(latexSrc)); // saved version becomes the new diff baseline
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -545,7 +577,10 @@ ${src.slice(0, 6000)}`,
   };
 
   const applySuggestions = async () => {
-    if (!originalLatex) setOriginalLatex(latexSrc);
+    if (!originalLatex) {
+      setOriginalLatex(latexSrc);
+      setOriginalNodes(nodes);
+    }
     setApplying(true);
     const res = await db.callAI({
       type: 'chat',
@@ -740,14 +775,14 @@ TARGET: ${job?.title} at ${job?.company}`,
       {/* ── Changes Diff ── */}
       {view === 'changes' && (
         <>
-          {originalLatex && originalLatex !== latexSrc ? (
-            <DiffView original={originalLatex} modified={latexSrc} />
+          {originalNodes.length > 0 && nodes.length > 0 && originalLatex !== latexSrc ? (
+            <SectionDiffView originalNodes={originalNodes} modifiedNodes={nodes} />
           ) : (
             <div style={{ textAlign: 'center', padding: '30px 20px' }}>
               <p style={{ color: C.t3, fontSize: 13 }}>
-                {!originalLatex
-                  ? 'No original resume saved yet. Paste your LaTeX, save to profile, then apply suggestions to see changes.'
-                  : 'No changes yet. Apply AI suggestions to see what was modified.'}
+                {originalNodes.length === 0
+                  ? 'No original resume saved yet. Paste your LaTeX and click "Save to Profile", then apply AI suggestions to see what changed.'
+                  : 'No changes yet. Click "Get Suggestions" then "Apply Suggestions to LaTeX" to see section-by-section changes.'}
               </p>
             </div>
           )}
