@@ -11,6 +11,12 @@ import { FLAGS } from '@/theme';
 const CoverLetterEditor = lazy(() => import('@/components/apply/CoverLetterEditor'));
 const ResumeEditor = lazy(() => import('@/components/apply/ResumeEditor'));
 
+function decodeHtml(html) {
+  const txt = document.createElement('textarea');
+  txt.innerHTML = html;
+  return txt.value;
+}
+
 export default function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -123,8 +129,18 @@ export default function JobDetail() {
           <TabsTrigger value="resume">Tailor Resume</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
-          <Card className="p-5 text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap max-h-[600px] overflow-auto">
-            {job.description || 'No description available.'}
+          <Card className="p-5 text-sm leading-relaxed text-muted-foreground max-h-[600px] overflow-auto">
+            {(() => {
+              const desc = job.description || '';
+              const decoded = desc.includes('&') ? decodeHtml(desc) : desc;
+              const isHtml = /<[a-z][\s\S]*>/i.test(decoded);
+              return isHtml ? (
+                <div className="prose prose-invert prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_p]:mb-3 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_a]:text-blue-400 [&_a]:underline [&_table]:w-full"
+                  dangerouslySetInnerHTML={{ __html: decoded }} />
+              ) : (
+                <div className="whitespace-pre-wrap">{decoded || 'No description available.'}</div>
+              );
+            })()}
           </Card>
         </TabsContent>
         <TabsContent value="cover">
