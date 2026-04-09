@@ -298,48 +298,138 @@ function LatexResumePDF({ nodes, profile, email }) {
         <Text style={ps.headerName}>{displayName}</Text>
         <Text style={ps.headerContact}>{contactLine}</Text>
         {nodes.filter(n => n.type !== 'header').map((node, i) => {
-          switch (node.type) {
-            case 'section':
-              return <Text key={i} style={ps.section}>{strip(node.title)}</Text>;
-            case 'subheading':
-              return (
-                <View key={i} style={{ marginTop: 5, marginBottom: 1 }}>
-                  <View style={ps.subRow}>
-                    <Text style={ps.subTitle}>{strip(node.title)}</Text>
-                    <Text style={ps.subDate}>{strip(node.date)}</Text>
-                  </View>
-                  <View style={ps.subRow}>
-                    <Text style={ps.subSubtitle}>{strip(node.subtitle)}</Text>
-                    <Text style={ps.subLocation}>{strip(node.location)}</Text>
-                  </View>
-                </View>
-              );
-            case 'subheading_cont':
-              return <Text key={i} style={ps.contTitle}>{strip(node.title)}</Text>;
-            case 'project':
-              return (
-                <View key={i} style={ps.projectRow}>
-                  <Text style={{ fontSize: 10.5 }}>{strip(node.content)}</Text>
-                  <Text style={{ fontSize: 10.5, color: '#555' }}>{strip(node.date)}</Text>
-                </View>
-              );
-            case 'item':
-              return <Text key={i} style={ps.item}>{'\u2022  '}{strip(node.content)}</Text>;
-            case 'text':
-              return <Text key={i} style={ps.text}>{strip(node.content)}</Text>;
-            default:
-              return null;
-          }
+          if (node.type === 'section') return <Text key={i} style={ps.section}>{strip(node.title || '')}</Text>;
+          if (node.type === 'subheading') return (
+            <View key={i} style={{ marginTop: 5, marginBottom: 1 }}>
+              <View style={ps.subRow}>
+                <Text style={ps.subTitle}>{strip(node.title || '')}</Text>
+                <Text style={ps.subDate}>{strip(node.date || '')}</Text>
+              </View>
+              <View style={ps.subRow}>
+                <Text style={ps.subSubtitle}>{strip(node.subtitle || '')}</Text>
+                <Text style={ps.subLocation}>{strip(node.location || '')}</Text>
+              </View>
+            </View>
+          );
+          if (node.type === 'subheading_cont') return <Text key={i} style={ps.contTitle}>{strip(node.title || '')}</Text>;
+          if (node.type === 'project') return (
+            <View key={i} style={ps.projectRow}>
+              <Text style={{ fontSize: 10.5 }}>{strip(node.content || '')}</Text>
+              <Text style={{ fontSize: 10.5, color: '#555' }}>{strip(node.date || '')}</Text>
+            </View>
+          );
+          if (node.type === 'item') return <Text key={i} style={ps.item}>{'\u2022  '}{strip(node.content || '')}</Text>;
+          if (node.type === 'text') return <Text key={i} style={ps.text}>{strip(node.content || '')}</Text>;
+          return <Text key={i}>{' '}</Text>;
         })}
       </Page>
     </Document>
   );
 }
 
+// ── Diff view — line-by-line comparison ──
+function DiffView({ original, modified }) {
+  const origLines = original.split('\n');
+  const modLines = modified.split('\n');
+
+  // Simple LCS-based diff
+  const diff = computeDiff(origLines, modLines);
+
+  return (
+    <div style={{
+      background: '#0d1117', border: `1px solid ${C.br}`, borderRadius: 8,
+      maxHeight: 500, overflow: 'auto', fontSize: 11.5, fontFamily: MONO, lineHeight: 1.5,
+    }}>
+      {diff.map((line, i) => {
+        const bg = line.type === 'add' ? '#1a3a1a' : line.type === 'remove' ? '#3a1a1a' : 'transparent';
+        const color = line.type === 'add' ? '#4ade80' : line.type === 'remove' ? '#f87171' : '#8b949e';
+        const prefix = line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' ';
+        return (
+          <div key={i} style={{ padding: '1px 12px', background: bg, borderLeft: `3px solid ${line.type === 'add' ? '#22c55e' : line.type === 'remove' ? '#ef4444' : 'transparent'}` }}>
+            <span style={{ color: '#555', userSelect: 'none', display: 'inline-block', width: 20 }}>{prefix}</span>
+            <span style={{ color, whiteSpace: 'pre-wrap' }}>{line.text}</span>
+          </div>
+        );
+      })}
+      <div style={{ padding: '10px 12px', borderTop: `1px solid ${C.br}`, color: C.t3, fontSize: 10 }}>
+        {diff.filter(l => l.type === 'add').length} additions, {diff.filter(l => l.type === 'remove').length} removals
+      </div>
+    </div>
+  );
+}
+
+function computeDiff(origLines, modLines) {
+  const result = [];
+  const origSet = new Set(origLines.map((l, i) => `${i}:${l.trim()}`));
+  const modSet = new Set(modLines.map((l, i) => `${i}:${l.trim()}`));
+
+  // Build a map of content → line indices
+  const origMap = new Map();
+  origLines.forEach((l, i) => {
+    const key = l.trim();
+    if (!origMap.has(key)) origMap.set(key, []);
+    origMap.get(key).push(i);
+  });
+  const modMap = new Map();
+  modLines.forEach((l, i) => {
+    const key = l.trim();
+    if (!modMap.has(key)) modMap.set(key, []);
+    modMap.get(key).push(i);
+  });
+
+  // Mark unchanged lines (same content, consumed in order)
+  const origUsed = new Set();
+  const modUsed = new Set();
+  const unchanged = new Map(); // modIdx → origIdx
+
+  for (let mi = 0; mi < modLines.length; mi++) {
+    const key = modLines[mi].trim();
+    const origIdxs = origMap.get(key);
+    if (origIdxs) {
+      for (const oi of origIdxs) {
+        if (!origUsed.has(oi)) {
+          origUsed.add(oi);
+          modUsed.add(mi);
+          unchanged.set(mi, oi);
+          break;
+        }
+      }
+    }
+  }
+
+  // Now interleave: show removed lines (in orig not matched), unchanged, added (in mod not matched)
+  let oi = 0, mi = 0;
+  while (oi < origLines.length || mi < modLines.length) {
+    // Output removed lines from orig
+    while (oi < origLines.length && !origUsed.has(oi)) {
+      if (origLines[oi].trim()) result.push({ type: 'remove', text: origLines[oi] });
+      oi++;
+    }
+    // Output added lines from mod
+    while (mi < modLines.length && !modUsed.has(mi)) {
+      if (modLines[mi].trim()) result.push({ type: 'add', text: modLines[mi] });
+      mi++;
+    }
+    // Output matched line
+    if (mi < modLines.length && unchanged.has(mi)) {
+      result.push({ type: 'same', text: modLines[mi] });
+      oi = unchanged.get(mi) + 1;
+      mi++;
+    } else {
+      // Safety: advance
+      if (mi < modLines.length) { result.push({ type: 'add', text: modLines[mi] }); mi++; }
+      if (oi < origLines.length) { result.push({ type: 'remove', text: origLines[oi] }); oi++; }
+    }
+  }
+
+  return result;
+}
+
 // ── Main component ──
 export default function ResumeEditor({ job }) {
   const { profile, setProfile } = useStore();
   const [latexSrc, setLatexSrc] = useState('');
+  const [originalLatex, setOriginalLatex] = useState('');
   const [nodes, setNodes] = useState([]);
   const [suggestions, setSuggestions] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -354,6 +444,7 @@ export default function ResumeEditor({ job }) {
     const rt = profile?.resume_text || '';
     if (isLatex(rt)) {
       setLatexSrc(rt);
+      setOriginalLatex(rt);
       setNodes(parseLatexToAST(rt));
     }
   }, []);
@@ -417,6 +508,7 @@ ${src.slice(0, 6000)}`,
   };
 
   const applySuggestions = async () => {
+    if (!originalLatex) setOriginalLatex(latexSrc);
     setApplying(true);
     const res = await db.callAI({
       type: 'chat',
@@ -504,6 +596,7 @@ TARGET: ${job?.title} at ${job?.company}`,
           { id: 'editor', label: 'LaTeX Editor' },
           { id: 'preview', label: 'Rendered Preview' },
           { id: 'suggestions', label: 'AI Suggestions' },
+          { id: 'changes', label: 'Changes' },
         ].map((t) => (
           <button key={t.id} onClick={() => setView(t.id)} style={{
             flex: 1, padding: '8px', border: 'none', fontSize: 11, fontWeight: 700,
@@ -601,6 +694,23 @@ TARGET: ${job?.title} at ${job?.company}`,
                 {hasLatex
                   ? `Click "Get Suggestions" to compare your resume against ${job?.title || 'this role'} at ${job?.company || 'this company'}.`
                   : 'Add your LaTeX resume first, then come back for AI suggestions.'}
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Changes Diff ── */}
+      {view === 'changes' && (
+        <>
+          {originalLatex && originalLatex !== latexSrc ? (
+            <DiffView original={originalLatex} modified={latexSrc} />
+          ) : (
+            <div style={{ textAlign: 'center', padding: '30px 20px' }}>
+              <p style={{ color: C.t3, fontSize: 13 }}>
+                {!originalLatex
+                  ? 'No original resume saved yet. Paste your LaTeX, save to profile, then apply suggestions to see changes.'
+                  : 'No changes yet. Apply AI suggestions to see what was modified.'}
               </p>
             </div>
           )}
