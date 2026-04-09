@@ -53,6 +53,7 @@ export default function CoverLetterEditor({ job }) {
   const [content, setContent] = useState('');
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [pdfEmail, setPdfEmail] = useState(profile?.email || '');
 
   const generate = async () => {
     setGenerating(true);
@@ -76,7 +77,7 @@ export default function CoverLetterEditor({ job }) {
     setDownloading(true);
     try {
       const blob = await pdf(
-        <CoverLetterPDF content={content} profile={profile} job={job} />
+        <CoverLetterPDF content={content} profile={{ ...profile, email: pdfEmail || profile?.email }} job={job} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -122,6 +123,24 @@ export default function CoverLetterEditor({ job }) {
           )}
         </div>
       </div>
+
+      {/* Email for PDF */}
+      {content && !generating && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: C.t3, fontFamily: MONO, whiteSpace: 'nowrap' }}>EMAIL IN PDF</label>
+          <input
+            type="email"
+            value={pdfEmail}
+            onChange={(e) => setPdfEmail(e.target.value)}
+            placeholder={profile?.email || 'your@email.com'}
+            style={{
+              flex: 1, padding: '5px 10px', fontSize: 13,
+              background: 'transparent', border: `1px solid ${C.br}`,
+              borderRadius: 6, color: C.t1,
+            }}
+          />
+        </div>
+      )}
 
       {/* Loading state */}
       {generating && (
