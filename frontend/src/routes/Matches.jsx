@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import useStore from '@/store';
 
 function MatchCard({ match }) {
@@ -46,6 +47,7 @@ export default function Matches() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
   const [hideApplied, setHideApplied] = useState(false);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (matches.length === 0) loadMatches();
@@ -62,11 +64,18 @@ export default function Matches() {
   const { filtered, counts } = useMemo(() => {
     let base = matches;
     if (hideApplied) base = base.filter((m) => !appliedJobIds.has(m.job_id));
+    if (search) {
+      const q = search.toLowerCase();
+      base = base.filter((m) => {
+        const j = m.jobs || {};
+        return (j.title || '').toLowerCase().includes(q) || (j.company || '').toLowerCase().includes(q) || (j.location || '').toLowerCase().includes(q);
+      });
+    }
     const strong = base.filter((m) => m.score >= 0.7);
     const stretch = base.filter((m) => m.score >= 0.4 && m.score < 0.7);
     const f = filter === 'strong' ? strong : filter === 'stretch' ? stretch : base;
     return { filtered: f, counts: { all: base.length, strong: strong.length, stretch: stretch.length } };
-  }, [matches, filter, hideApplied, appliedJobIds]);
+  }, [matches, filter, hideApplied, appliedJobIds, search]);
 
   if (loading && matches.length === 0) {
     return (
@@ -81,6 +90,7 @@ export default function Matches() {
       <div className="mb-6 flex items-center gap-3">
         <h1 className="text-lg font-semibold">{matches.length} matches</h1>
         <div className="flex-1" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title, company..." className="h-8 w-48 text-sm" />
         <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
           {refreshing ? 'Matching...' : 'Refresh'}
         </Button>
