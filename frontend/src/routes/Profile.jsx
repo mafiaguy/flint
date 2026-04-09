@@ -142,27 +142,24 @@ export default function Profile() {
   ];
 
   return (
-    <div style={{ maxWidth: 660, margin: '0 auto', padding: '16px 16px 60px' }}>
-      <div style={{ fontSize: 10, fontFamily: MONO, letterSpacing: 2, color: C.acc, marginBottom: 4 }}>
-        PROFILE
-      </div>
-      <h2 style={{ color: C.t1, fontSize: 24, fontWeight: 800, marginBottom: 16 }}>
-        Profile & Insights
+    <div style={{ padding: '24px 20px 60px' }}>
+      <h2 style={{ color: C.t1, fontSize: 20, fontWeight: 700, marginBottom: 20 }}>
+        Profile
       </h2>
 
       {/* Section tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.br}` }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
         {[
-          { id: 'profile', label: 'Profile' },
-          { id: 'skills', label: 'Skill Gap' },
+          { id: 'profile', label: 'Details' },
+          { id: 'skills', label: 'Skill gap' },
           { id: 'salary', label: 'Salary' },
         ].map((t) => (
           <button key={t.id} onClick={() => setActiveSection(t.id)}
             style={{
-              flex: 1, padding: '10px 8px', border: 'none', fontSize: 12, fontWeight: 700,
-              fontFamily: MONO, cursor: 'pointer',
-              background: activeSection === t.id ? C.acc + '22' : C.c1,
-              color: activeSection === t.id ? C.acc : C.t3,
+              padding: '6px 14px', border: `1px solid ${activeSection === t.id ? C.br : 'transparent'}`,
+              borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              background: activeSection === t.id ? C.c1 : 'transparent',
+              color: activeSection === t.id ? C.t1 : C.t3,
             }}>
             {t.label}
           </button>

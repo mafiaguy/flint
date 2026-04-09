@@ -54,16 +54,18 @@ function AppLayout() {
     <div style={{ minHeight: "100vh", background: "#08080c" }}>
       <Header />
       <NavBar />
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/matches" element={<Matches />} />
-          <Route path="/job/:id" element={<JobDetail />} />
-          <Route path="/browse" element={<Browse />} />
-          <Route path="/tracker" element={<Tracker />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<Navigate to="/matches" replace />} />
-        </Routes>
-      </Suspense>
+      <main style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/matches" element={<Matches />} />
+            <Route path="/job/:id" element={<JobDetail />} />
+            <Route path="/browse" element={<Browse />} />
+            <Route path="/tracker" element={<Tracker />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<Navigate to="/matches" replace />} />
+          </Routes>
+        </Suspense>
+      </main>
     </div>
   );
 }

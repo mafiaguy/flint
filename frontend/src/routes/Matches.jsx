@@ -10,7 +10,7 @@ export default function Matches() {
   const { matches, loading, loadMatches, refreshMatches, profile } = useStore();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState("all"); // all, strong, stretch
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     if (matches.length === 0) loadMatches();
@@ -35,89 +35,84 @@ export default function Matches() {
   if (loading && matches.length === 0) {
     return (
       <div style={{ padding: "60px 16px", textAlign: "center" }}>
-        <Spinner size={36} color={C.acc} />
-        <p style={{ color: C.t3, fontSize: 13, marginTop: 16 }}>Loading your matches...</p>
+        <Spinner size={28} color={C.t3} />
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 660, margin: "0 auto", padding: "16px 16px 60px" }}>
+    <div style={{ padding: "24px 20px 60px" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, fontFamily: MONO, letterSpacing: 2, color: C.acc, marginBottom: 4 }}>
-            AI MATCHES
-          </div>
-          <h2 style={{ color: C.t1, fontSize: 24, fontWeight: 800, margin: 0 }}>
-            {matches.length} matches
-          </h2>
-          {newCount > 0 && (
-            <span style={{
-              fontSize: 11, fontFamily: MONO, color: C.grn, background: C.grn + "15",
-              padding: "2px 8px", borderRadius: 99, marginTop: 4, display: "inline-block",
-            }}>
-              {newCount} new since yesterday
-            </span>
-          )}
-        </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
+        <h2 style={{ color: C.t1, fontSize: 20, fontWeight: 700, margin: 0 }}>
+          Matches
+        </h2>
+        {matches.length > 0 && (
+          <span style={{ fontSize: 13, color: C.t3 }}>
+            {matches.length} jobs
+            {newCount > 0 && ` \u00b7 ${newCount} new`}
+          </span>
+        )}
+        <div style={{ flex: 1 }} />
         <button onClick={refresh} disabled={refreshing}
           style={{
-            padding: "10px 20px", background: refreshing ? C.c2 : C.grad,
-            color: refreshing ? C.t3 : "#fff", border: "none", borderRadius: 10,
-            fontSize: 13, fontWeight: 700, cursor: refreshing ? "wait" : "pointer",
+            padding: "8px 16px", background: C.c1, color: C.t1,
+            border: `1px solid ${C.br}`, borderRadius: 8,
+            fontSize: 13, fontWeight: 600, cursor: refreshing ? "wait" : "pointer",
           }}>
-          {refreshing ? "Matching..." : "Refresh Matches"}
+          {refreshing ? "Matching..." : "Refresh"}
         </button>
       </div>
 
       {refreshing && <ScanBar />}
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        {[
-          { id: "all", label: "All", count: matches.length },
-          { id: "strong", label: "Strong Fit", count: matches.filter((m) => m.score >= 0.7).length },
-          { id: "stretch", label: "Worth a Shot", count: matches.filter((m) => m.score >= 0.4 && m.score < 0.7).length },
-        ].map((f) => (
-          <button key={f.id} onClick={() => setFilter(f.id)}
-            style={{
-              padding: "6px 14px", fontSize: 12, fontFamily: MONO,
-              border: `1px solid ${filter === f.id ? C.acc + "55" : C.br}`,
-              borderRadius: 99, background: filter === f.id ? C.acc + "15" : "transparent",
-              color: filter === f.id ? C.acc : C.t3, cursor: "pointer", fontWeight: 600,
-            }}>
-            {f.label} ({f.count})
-          </button>
-        ))}
-      </div>
+      {matches.length > 0 && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+          {[
+            { id: "all", label: "All", count: matches.length },
+            { id: "strong", label: "Strong fit", count: matches.filter((m) => m.score >= 0.7).length },
+            { id: "stretch", label: "Worth a shot", count: matches.filter((m) => m.score >= 0.4 && m.score < 0.7).length },
+          ].map((f) => (
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              style={{
+                padding: "6px 14px", fontSize: 13,
+                border: `1px solid ${filter === f.id ? C.br : "transparent"}`,
+                borderRadius: 8, background: filter === f.id ? C.c1 : "transparent",
+                color: filter === f.id ? C.t1 : C.t3, cursor: "pointer", fontWeight: 500,
+              }}>
+              {f.label} ({f.count})
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Match list */}
+      {/* Content */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <span style={{ fontSize: 48, display: "block", marginBottom: 16 }}>{"\u{26A1}"}</span>
-          <h3 style={{ color: C.t1, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+        <div style={{ textAlign: "center", padding: "80px 20px" }}>
+          <h3 style={{ color: C.t1, fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
             {matches.length === 0 ? "No matches yet" : "No matches in this filter"}
           </h3>
-          <p style={{ color: C.t3, fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: "0 auto 16px" }}>
+          <p style={{ color: C.t3, fontSize: 14, lineHeight: 1.6, maxWidth: 420, margin: "0 auto 20px" }}>
             {matches.length === 0
               ? !profile?.onboarding_complete
-                ? "Complete your profile setup so FLINT can match you with the best jobs."
-                : 'Click "Refresh Matches" to have FLINT analyze jobs against your profile.'
-              : "Try a different filter to see more matches."}
+                ? "Set up your profile so we can match you with relevant jobs."
+                : "Click Refresh to analyze jobs against your profile."
+              : "Try a different filter."}
           </p>
           {matches.length === 0 && !profile?.onboarding_complete && (
             <button onClick={() => navigate("/onboarding")}
               style={{
-                padding: "12px 28px", background: C.grad, color: "#fff", border: "none",
-                borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                padding: "10px 24px", background: C.c1, color: C.t1,
+                border: `1px solid ${C.br}`, borderRadius: 8,
+                fontSize: 14, fontWeight: 600, cursor: "pointer",
               }}>
-              Set Up Profile
+              Set up profile
             </button>
           )}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map((m) => (
             <MatchCard key={m.id} match={m} />
           ))}

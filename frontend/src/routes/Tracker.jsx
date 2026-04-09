@@ -316,26 +316,23 @@ export default function Tracker() {
     : null;
 
   return (
-    <div style={{ padding: '16px 16px 60px' }}>
+    <div style={{ padding: '24px 20px 60px' }}>
       {/* Header */}
-      <div style={{ maxWidth: 660, margin: '0 auto', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, fontFamily: MONO, letterSpacing: 2, color: C.acc, marginBottom: 4 }}>
-              APPLICATION TRACKER
-            </div>
-            <h2 style={{ color: C.t1, fontSize: 24, fontWeight: 800, margin: 0 }}>
-              {applications.length} tracked
-            </h2>
-          </div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <h2 style={{ color: C.t1, fontSize: 20, fontWeight: 700, margin: 0 }}>Tracker</h2>
+          {applications.length > 0 && (
+            <span style={{ fontSize: 13, color: C.t3 }}>{applications.length} applications</span>
+          )}
+          <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 4, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.br}` }}>
             {['kanban', 'list'].map((m) => (
               <button key={m} onClick={() => setViewMode(m)}
                 style={{
-                  padding: '6px 14px', border: 'none', fontSize: 11, fontFamily: MONO,
-                  cursor: 'pointer', fontWeight: 700,
-                  background: viewMode === m ? C.acc + '22' : C.c1,
-                  color: viewMode === m ? C.acc : C.t3,
+                  padding: '6px 14px', border: 'none', fontSize: 12,
+                  cursor: 'pointer', fontWeight: 500,
+                  background: viewMode === m ? C.c1 : 'transparent',
+                  color: viewMode === m ? C.t1 : C.t3,
                 }}>
                 {m === 'kanban' ? 'Board' : 'List'}
               </button>
@@ -345,11 +342,10 @@ export default function Tracker() {
       </div>
 
       {applications.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', maxWidth: 660, margin: '0 auto' }}>
-          <span style={{ fontSize: 48, display: 'block', marginBottom: 16 }}>{'\u{1F4CB}'}</span>
-          <h3 style={{ color: C.t1, fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No applications yet</h3>
+        <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+          <h3 style={{ color: C.t1, fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No applications yet</h3>
           <p style={{ color: C.t3, fontSize: 14 }}>
-            When you mark jobs as applied from Matches or Browse, they'll appear here.
+            When you mark jobs as applied from Matches or Browse, they'll show up here.
           </p>
         </div>
       ) : viewMode === 'kanban' ? (
