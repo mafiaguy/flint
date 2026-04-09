@@ -222,6 +222,21 @@ async function callGroq(
     }),
   });
 
+  if (res.status === 429) {
+    // Rate limited — wait and retry once
+    const retryAfter = parseInt(res.headers.get("retry-after") || "5", 10);
+    console.warn(`Groq 429, retrying after ${retryAfter}s`);
+    await new Promise(r => setTimeout(r, retryAfter * 1000));
+    const retry = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], max_tokens: maxTokens, temperature: 0.7 }),
+    });
+    if (!retry.ok) return `LLM rate limited. Please try again in a minute.`;
+    const retryData = await retry.json();
+    return retryData.choices?.[0]?.message?.content || "No response.";
+  }
+
   if (!res.ok) {
     console.error("Groq error:", await res.text());
     return `LLM error (${res.status}).`;
@@ -251,6 +266,18 @@ async function callGroqMultiTurn(
     }),
   });
 
+  if (res.status === 429) {
+    const retryAfter = parseInt(res.headers.get("retry-after") || "5", 10);
+    await new Promise(r => setTimeout(r, retryAfter * 1000));
+    const retry = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({ model: GROQ_MODEL, messages, max_tokens: maxTokens, temperature: 0.7 }),
+    });
+    if (!retry.ok) return `LLM rate limited. Please try again in a minute.`;
+    const retryData = await retry.json();
+    return retryData.choices?.[0]?.message?.content || "No response.";
+  }
   if (!res.ok) return `LLM error (${res.status}).`;
   const data = await res.json();
   return data.choices?.[0]?.message?.content || "No response.";
