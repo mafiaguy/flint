@@ -5,6 +5,34 @@ import { db } from '../../api';
 import useStore from '../../store';
 import { useLoadingMessage } from '../ui/loading-message';
 
+// ── Standard LaTeX preamble for Jake's Resume template ──
+const STANDARD_PREAMBLE = `\\documentclass[letterpaper,11pt]{article}
+\\usepackage[empty]{fullpage}
+\\usepackage{titlesec}
+\\usepackage[usenames,dvipsnames]{color}
+\\usepackage{enumitem}
+\\usepackage[hidelinks]{hyperref}
+\\usepackage{fancyhdr}
+\\usepackage[english]{babel}
+\\usepackage{tabularx}
+\\usepackage{fontawesome5}
+\\pagestyle{fancy}\\fancyhf{}\\fancyfoot{}
+\\renewcommand{\\headrulewidth}{0pt}\\renewcommand{\\footrulewidth}{0pt}
+\\addtolength{\\oddsidemargin}{-0.5in}\\addtolength{\\evensidemargin}{-0.5in}
+\\addtolength{\\textwidth}{1in}\\addtolength{\\topmargin}{-0.5in}\\addtolength{\\textheight}{1.0in}
+\\urlstyle{same}\\raggedbottom\\raggedright\\setlength{\\tabcolsep}{0in}
+\\titleformat{\\section}{\\vspace{-4pt}\\scshape\\raggedright\\large}{}{0em}{}[\\color{black}\\titlerule\\vspace{-5pt}]
+\\newcommand{\\resumeItem}[1]{\\item\\small{#1\\vspace{-2pt}}}
+\\newcommand{\\resumeSubheading}[4]{\\vspace{-2pt}\\item\\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}\\textbf{#1}&#2\\\\\\textit{\\small#3}&\\textit{\\small#4}\\\\\\end{tabular*}\\vspace{-7pt}}
+\\newcommand{\\resumeSubheadingContinue}[2]{\\vspace{2pt}\\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}\\textit{\\small\\textbf{#1}}\\\\\\end{tabular*}\\vspace{-7pt}}
+\\newcommand{\\resumeProjectHeading}[2]{\\item\\begin{tabular*}{0.97\\textwidth}{l@{\\extracolsep{\\fill}}r}\\small#1&#2\\\\\\end{tabular*}\\vspace{-7pt}}
+\\newcommand{\\resumeSubItem}[1]{\\resumeItem{#1}\\vspace{-4pt}}
+\\renewcommand\\labelitemii{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
+\\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in,label={}]}
+\\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}}
+\\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-5pt}}`;
+
 // ── Detect garbage / LaTeX ──
 function isGarbageText(text) {
   if (!text || text.length < 20) return true;
@@ -532,19 +560,19 @@ export default function ResumeEditor({ job }) {
       ? `Name: ${profile?.name}\nRole: ${profile?.role}\nExperience: ${profile?.experience} years\nSkills: ${profile?.skills}`
       : resumeText;
     const res = await db.callAI({
-      type: 'chat',
-      messages: [{
-        role: 'user',
-        content: `Convert this resume into professional LaTeX code. Use the Jake's Resume template style with \\resumeSubheading, \\resumeItem, \\section, \\textbf, \\begin{itemize}. Include \\documentclass through \\end{document}. Output ONLY the LaTeX code, no markdown fences.
-
-RESUME:
-${src.slice(0, 6000)}`,
-      }],
+      type: 'generate-latex',
+      resume_content: src.slice(0, 6000),
       profile,
     });
     if (res?.text) {
-      const latex = res.text.replace(/^```\w*\n?/, '').replace(/```\s*$/, '').trim();
-      updateLatex(latex);
+      let body = res.text.replace(/^```\w*\n?/, '').replace(/```\s*$/, '').trim();
+      // If AI returned full doc, extract just the body
+      const docIdx = body.indexOf('\\begin{document}');
+      if (docIdx !== -1) body = body.slice(docIdx + '\\begin{document}'.length);
+      body = body.replace(/\\end\{document\}\s*$/, '');
+      // Add standard preamble
+      const fullLatex = STANDARD_PREAMBLE + '\n\\begin{document}\n' + body.trim() + '\n\\end{document}';
+      updateLatex(fullLatex);
       setView('preview');
     }
     setGenerating(false);
@@ -590,29 +618,18 @@ ${src.slice(0, 6000)}`,
     // Split LaTeX into preamble + body to reduce token count
     const docStart = latexSrc.indexOf('\\begin{document}');
     const preamble = docStart !== -1 ? latexSrc.slice(0, docStart + '\\begin{document}'.length) : '';
-    const body = docStart !== -1 ? latexSrc.slice(docStart + '\\begin{document}'.length).replace(/\\end\{document\}\s*$/, '') : latexSrc;
+    const latexBody = docStart !== -1 ? latexSrc.slice(docStart + '\\begin{document}'.length).replace(/\\end\{document\}\s*$/, '') : latexSrc;
 
     const res = await db.callAI({
-      type: 'chat',
-      messages: [{
-        role: 'user',
-        content: `You are a LaTeX resume expert. Rewrite ONLY the document body below by applying the suggestions. Keep the same facts, structure, and LaTeX commands (\\resumeSubheading, \\resumeItem, \\section, etc.). Rephrase bullet points and emphasize what's relevant to the target job. Do NOT invent experience.
-
-Output ONLY the body content (between \\begin{document} and \\end{document}). No preamble, no \\documentclass, no markdown fences.
-
-DOCUMENT BODY:
-${body.slice(0, 7000)}
-
-SUGGESTIONS:
-${suggestions.slice(0, 1500)}
-
-TARGET: ${job?.title} at ${job?.company}`,
-      }],
+      type: 'rewrite-latex',
+      latex_body: latexBody.trim(),
+      suggestions: suggestions.slice(0, 1500),
+      target: `${job?.title} at ${job?.company}`,
       profile,
     });
     if (res?.text) {
       let newBody = res.text.replace(/^```\w*\n?/, '').replace(/```\s*$/, '').trim();
-      // Remove any preamble the AI might have added
+      // Remove any preamble the AI might have accidentally included
       const bodyIdx = newBody.indexOf('\\begin{document}');
       if (bodyIdx !== -1) newBody = newBody.slice(bodyIdx + '\\begin{document}'.length);
       newBody = newBody.replace(/\\end\{document\}\s*$/, '');

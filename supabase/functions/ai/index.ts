@@ -29,7 +29,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 // Route types to providers — Gemini for heavy work, Groq for speed
-const GEMINI_TYPES = new Set(["onboard", "batch-match", "cover", "tailor-resume", "skill-gap"]);
+const GEMINI_TYPES = new Set(["onboard", "batch-match", "cover", "tailor-resume", "skill-gap", "rewrite-latex", "generate-latex"]);
 const GROQ_TYPES = new Set(["match", "chat", "interview-prep"]);
 
 // Cache TTL per type (hours). null = no cache.
@@ -461,6 +461,60 @@ Skills: ${profile?.skills || "Not specified"}
 ${profile?.resume_text ? `\nCURRENT RESUME:\n${(profile.resume_text).slice(0, 1500)}` : ""}`;
 
         const r = await callLLM(type, sys, usr, 2000);
+        text = r.text; model = r.model;
+        break;
+      }
+
+      // ── Generate LaTeX from profile (Gemini) ──
+      case "generate-latex": {
+        const sys = `You are a LaTeX resume generator. Convert the provided resume content into a professional LaTeX resume using Jake's Resume template style.
+
+RULES:
+- Use \\section for main sections (Summary, Skills, Experience, Education, Projects, Achievements)
+- Use \\resumeSubheading{title}{date}{company}{location} for job entries
+- Use \\resumeSubheadingContinue{subtitle}{} for sub-categories within a role
+- Use \\resumeItem{text} for bullet points inside \\resumeItemListStart/\\resumeItemListEnd
+- Use \\textbf{} for emphasis, \\href{url}{text} for links
+- Use \\begin{center} for the header with name and contact info
+- Output ONLY the LaTeX body (between \\begin{document} and \\end{document})
+- Do NOT include preamble, \\documentclass, or \\newcommand definitions
+- Do NOT output markdown, explanations, or career advice
+- Keep ALL facts exactly as provided`;
+
+        const usr = `RESUME CONTENT:\n${body?.resume_content || ""}`;
+        const r = await callLLM(type, sys, usr, 4000);
+        text = r.text; model = r.model;
+        break;
+      }
+
+      // ── LaTeX resume rewrite (Gemini — structured output) ──
+      case "rewrite-latex": {
+        const sys = `You are a LaTeX resume rewriter. You receive the BODY of a LaTeX resume (between \\begin{document} and \\end{document}) and a set of suggestions.
+
+RULES:
+- Rewrite the body by applying the suggestions
+- Keep ALL existing LaTeX commands intact (\\resumeSubheading, \\resumeItem, \\section, \\resumeSubheadingContinue, \\resumeItemListStart, etc.)
+- Keep the SAME facts, dates, companies, and structure
+- Do NOT invent new experiences or achievements
+- Rephrase bullet points to emphasize relevance to the target job
+- Add relevant keywords from the suggestions where they fit naturally
+- Output ONLY the LaTeX body content — no \\documentclass, no preamble, no \\begin{document}, no \\end{document}
+- Do NOT output markdown, explanations, career advice, or anything other than LaTeX code
+- Do NOT wrap output in code fences`;
+
+        const latex_body = body?.latex_body || "";
+        const suggestions_text = body?.suggestions || "";
+        const target = body?.target || "";
+
+        const usr = `TARGET ROLE: ${target}
+
+SUGGESTIONS TO APPLY:
+${suggestions_text}
+
+LATEX BODY TO REWRITE:
+${latex_body}`;
+
+        const r = await callLLM(type, sys, usr, 4000);
         text = r.text; model = r.model;
         break;
       }
