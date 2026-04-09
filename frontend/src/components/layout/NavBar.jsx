@@ -16,7 +16,7 @@ export default function NavBar() {
   return (
     <nav style={{
       display: "flex", borderBottom: `1px solid ${C.br}`, background: C.c1,
-      position: "sticky", top: 0, zIndex: 50, padding: "0 16px",
+      position: "sticky", top: 0, zIndex: 50, padding: "0 32px",
     }}>
       {NAV.map((n) => {
         const active = activePath === n.path;

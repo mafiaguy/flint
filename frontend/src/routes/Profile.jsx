@@ -142,7 +142,7 @@ export default function Profile() {
   ];
 
   return (
-    <div style={{ padding: '24px 20px 60px' }}>
+    <div style={{ padding: '24px 32px 60px' }}>
       <h2 style={{ color: C.t1, fontSize: 20, fontWeight: 700, marginBottom: 20 }}>
         Profile
       </h2>

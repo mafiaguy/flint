@@ -10,7 +10,7 @@ export default function Header() {
 
   return (
     <div style={{
-      padding: "10px 20px", display: "flex", alignItems: "center", gap: 10,
+      padding: "12px 32px", display: "flex", alignItems: "center", gap: 10,
       borderBottom: `1px solid ${C.br}`, background: C.bg,
     }}>
       <span

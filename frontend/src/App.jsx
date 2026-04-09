@@ -54,7 +54,7 @@ function AppLayout() {
     <div style={{ minHeight: "100vh", background: "#08080c" }}>
       <Header />
       <NavBar />
-      <main style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/matches" element={<Matches />} />

@@ -41,7 +41,7 @@ export default function Matches() {
   }
 
   return (
-    <div style={{ padding: "24px 20px 60px" }}>
+    <div style={{ padding: "24px 32px 60px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
         <h2 style={{ color: C.t1, fontSize: 20, fontWeight: 700, margin: 0 }}>

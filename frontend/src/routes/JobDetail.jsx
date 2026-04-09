@@ -67,7 +67,7 @@ export default function JobDetail() {
   const scoreColor = scorePct >= 80 ? C.grn : scorePct >= 60 ? C.acc : scorePct ? C.red : C.t3;
 
   return (
-    <div style={{ maxWidth: 660, margin: '0 auto', padding: '16px 16px 60px' }}>
+    <div style={{ maxWidth: 800, padding: '24px 32px 60px' }}>
       {/* Back */}
       <button
         onClick={() => navigate(-1)}
